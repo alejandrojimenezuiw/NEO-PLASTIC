@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NEO-PLASTIC · Sistema de gestión de activos</title>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#d7cbc4;--sf:#eee6e1;--ink:#43291f;--mut:#6d564d;--br:#7b5b52;--tan:#b9a396;--ok:#3f6b4a;--wa:#9a6a12;--er:#a33a2c;--ln:#b9a396;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2b1d18;--sf:#3a2820;--ink:#f1e8e3;--mut:#c4b1a8;--br:#c9a597;--tan:#6b5249;--ok:#8fcf9f;--wa:#e6b95a;--er:#f08a7a;--ln:#6b5249}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+h1,h2,h3{font-family:"Bodoni Moda",Georgia,serif;margin:0 0 .5rem}
+header{display:flex;align-items:center;gap:1rem;padding:.8rem 1.2rem;background:var(--br);color:#fff;flex-wrap:wrap}
+header .brand{font-family:"Bodoni Moda",Georgia,serif;font-weight:800;font-size:1.4rem;letter-spacing:.04em}
+header small{opacity:.85}.sp{flex:1}
+nav{display:flex;gap:.25rem;padding:.5rem 1rem;overflow-x:auto;background:var(--sf);border-bottom:1px solid var(--ln)}
+nav button{white-space:nowrap;background:none;border:0;padding:.6rem .9rem;color:var(--mut);font:inherit;cursor:pointer;border-radius:6px;min-height:44px}
+nav button.on{background:var(--br);color:#fff}
+main{max-width:1000px;margin:0 auto;padding:1.2rem}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:8px;padding:1rem;margin-bottom:1rem}
+.grid{display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.kpi b{display:block;font-family:"Bodoni Moda",Georgia,serif;font-size:1.7rem}
+label{display:block;font-size:.85rem;color:var(--mut);margin:.5rem 0 .15rem}
+input,select{width:100%;padding:.65rem;border:1px solid var(--ln);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;min-height:44px}
+button.pri{background:var(--br);color:#fff;border:0;padding:.7rem 1.1rem;border-radius:6px;font:inherit;font-weight:600;cursor:pointer;min-height:44px;margin-top:.8rem}
+button.sec{background:none;border:1px solid var(--br);color:var(--br);padding:.4rem .7rem;border-radius:6px;cursor:pointer;font:inherit;min-height:36px}
+:focus-visible{outline:3px solid var(--wa);outline-offset:2px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:.5rem;border-bottom:1px solid var(--ln);vertical-align:top}th{color:var(--mut);font-weight:600}
+.tag{display:inline-block;padding:.1rem .55rem;border-radius:99px;font-size:.78rem;border:1px solid currentColor}
+.ok{color:var(--ok)}.wa{color:var(--wa)}.er{color:var(--er)}
+.msg{padding:.7rem 1rem;border-radius:6px;margin-bottom:1rem;border-left:5px solid var(--br);background:var(--sf)}
+.msg.e{border-color:var(--er)}.msg.s{border-color:var(--ok)}
+.roles{display:grid;gap:.6rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.roles button{text-align:left;padding:.9rem;border:1px solid var(--ln);background:var(--sf);color:var(--ink);border-radius:8px;cursor:pointer;font:inherit;min-height:44px}
+.roles button:hover{border-color:var(--br)}
+.flow{display:grid;gap:.5rem;grid-template-columns:1fr auto 1fr auto 1fr;align-items:stretch}
+.flow>div{padding:.8rem;border:1px solid var(--br);border-radius:8px;background:var(--sf)}.flow>span{align-self:center;color:var(--br);font-size:1.4rem}
+@media(max-width:700px){.flow{grid-template-columns:1fr}.flow>span{transform:rotate(90deg);justify-self:center}}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:.75rem;word-break:break-all}
+.two{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+</style></head><body>
+<div id="app"></div>
+<script>
+const TODAY=new Date('2026-11-03'),D=s=>new Date(s),addD=(s,n)=>{const x=D(s);x.setDate(x.getDate()+n);return x};
+const days=(a,b)=>Math.round((b-a)/864e5),mxn=n=>n.toLocaleString('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0}),iso=d=>d.toISOString().slice(0,10);
+const ROLES={Almacenista:'Da de alta, etiqueta y mueve activos.',Mantenimiento:'Programa y registra servicios; solicita bajas.',Contador:'Autoriza bajas y recibe reportes contables.',Administrador:'Aprueba traslados entre plantas y audita.'};
+const PERM={alta:['Almacenista','Administrador'],mov:['Almacenista','Administrador'],aprobMov:['Administrador'],svc:['Mantenimiento'],bajaSol:['Mantenimiento','Almacenista'],bajaAprob:['Contador']};
+const can=p=>PERM[p].includes(S.user);
+let A=[
+{id:'PLB-P1-INY-0004',name:'Inyectora #4',cat:'Inyectora',plant:1,area:'Nave A',cust:'R. Soto',st:'Operativo',cost:4800000,res:240000,life:10,acq:'2021-03-01',last:'2026-06-10',int:180,hrs:900,lim:1000},
+{id:'PLB-P1-INY-0002',name:'Inyectora #2',cat:'Inyectora',plant:1,area:'Nave A',cust:'R. Soto',st:'Operativo',cost:5100000,res:250000,life:10,acq:'2020-05-01',last:'2026-09-20',int:180,hrs:400,lim:1000},
+{id:'PLB-P1-MON-0007',name:'Montacargas principal',cat:'Montacargas',plant:1,area:'Patio',cust:'L. Vega',st:'Operativo',cost:950000,res:95000,life:8,acq:'2022-01-15',last:'2026-05-02',int:120,hrs:820,lim:1000},
+{id:'PLB-P3-MOL-0112',name:'Molde acero tapa 40mm',cat:'Molde',plant:3,area:'Almacén viejo',cust:'M. Ríos',st:'Operativo',cost:1200000,res:60000,life:6,acq:'2024-02-01',last:'2026-08-30',int:365,hrs:20000,lim:300000},
+{id:'PLB-P2-LAP-0310',name:'Laptop ingeniería',cat:'Cómputo',plant:2,area:'Oficinas',cust:'A. Cruz',st:'Operativo',cost:32000,res:0,life:3,acq:'2025-01-10',last:'2026-02-01',int:365,hrs:1500,lim:8000},
+{id:'PLB-P2-MOT-0045',name:'Motor eléctrico 75HP',cat:'Motor',plant:1,area:'Mantenimiento',cust:'J. Pérez',st:'Operativo',cost:180000,res:18000,life:10,acq:'2023-04-01',last:'2026-08-15',int:180,hrs:2100,lim:4000}];
+let K=[],N=[],S={user:null,view:'panel',msg:null,pend:[],bajas:[]};
+const hash=s=>{let h=5381n;for(const c of s)h=((h*33n)^BigInt(c.charCodeAt(0)))&0xffffffffffffn;return h.toString(16).padStart(12,'0')};
+function log(asset,action,detail){const prev=K.length?K[K.length-1].hash:'GENESIS',e={n:K.length+1,ts:new Date().toLocaleString('es-MX'),user:S.user||'Sistema',asset,action,detail,prev};e.hash=hash(prev+e.n+e.user+asset+action+detail);K.push(Object.freeze(e))}
+const notify=(to,t)=>N.unshift({to,t,ts:new Date().toLocaleTimeString('es-MX')});
+const dep=a=>{const e=a.baja?D(a.baja):TODAY,m=Math.max(0,(e.getFullYear()-D(a.acq).getFullYear())*12+e.getMonth()-D(a.acq).getMonth()),b=a.cost-a.res;return Math.min(m*b/(a.life*12),b)};
+const book=a=>a.cost-dep(a);
+function mt(a){if(a.st==='Baja')return{l:'—',c:''};const dl=days(TODAY,addD(a.last,a.int)),hl=a.lim-a.hrs;
+ if(dl<0||hl<=0)return{l:'Vencido',c:'er',dl,hl};if(dl<=15||hl<=a.lim*.1)return{l:'Próximo',c:'wa',dl,hl};return{l:'Al día',c:'ok',dl,hl}}
+const alerts=()=>A.filter(a=>mt(a).c==='er'||mt(a).c==='wa').map(a=>({a,m:mt(a)}));
+function qr(t){const h=hash(t)+hash(t+'x')+hash(t+'y')+hash(t+'z'),n=21;let s='',i=0;const f=(x,y)=>(x<8&&y<8)||(x>12&&y<8)||(x<8&&y>12);
+ for(let y=0;y<n;y++)for(let x=0;x<n;x++){let on;if(f(x,y)){const lx=x%14<8?x%14:x-13,ly=y<8?y:y-13;on=lx==0||lx==6||ly==0||ly==6||(lx>=2&&lx<=4&&ly>=2&&ly<=4)}else on=parseInt(h[i++%h.length],16)%2==1;if(on)s+=`<rect x="${x}" y="${y}" width="1" height="1"/>`}
+ return`<svg viewBox="-1 -1 23 23" width="130" role="img" aria-label="Código QR de ${t}"><rect x="-1" y="-1" width="23" height="23" fill="#fff"/><g fill="#43291f">${s}</g></svg>`}
+const tag=m=>`<span class="tag ${m.c}">${m.l}</span>`;
+const opts=(l,v=x=>x)=>l.map(x=>`<option value="${v(x)}">${typeof x==='object'?x.id+' · '+x.name:x}</option>`).join('');
+const live=()=>A.filter(a=>a.st!=='Baja');
+function seed(){log('SISTEMA','CARGA_INICIAL','Inventario migrado desde Excel: '+A.length+' activos');log('PLB-P1-MON-0007','ALERTA','Mantenimiento vencido detectado en migración')}
+seed();
+const msg=(t,k)=>{S.msg={t,k};render()};
+function go(v){S.view=v;S.msg=null;render()}
+function login(r){S.user=r;S.view='panel';log('SISTEMA','LOGIN','Acceso de '+r);render()}
+function logout(){S.user=null;render()}
+/* ---- Acciones ---- */
+function doAlta(){if(!can('alta'))return msg('Tu rol no puede dar de alta activos.','e');const g=i=>document.getElementById(i).value.trim();
+ const name=g('f_n'),cost=+g('f_c');if(!name||!(cost>0))return msg('Completa nombre y costo mayor a 0.','e');
+ const code={Inyectora:'INY',Montacargas:'MON',Molde:'MOL',Cómputo:'LAP',Motor:'MOT'}[g('f_k')],seq=String(A.length+1).padStart(4,'0'),id=`PLB-P${g('f_p')}-${code}-${seq}`;
+ A.push({id,name,cat:g('f_k'),plant:+g('f_p'),area:g('f_a')||'Por asignar',cust:g('f_u')||'Por asignar',st:'Operativo',cost,res:+g('f_r')||0,life:+g('f_l')||5,acq:iso(TODAY),last:iso(TODAY),int:+g('f_i')||180,hrs:0,lim:+g('f_h')||1000});
+ log(id,'ALTA',`${name} · ${mxn(cost)} · Planta ${g('f_p')}`);notify('Contador',`Alta ${id}: ${mxn(cost)}. Iniciar depreciación.`);S.qr=id;msg('Activo registrado. Imprime la etiqueta QR y pégala en el equipo.','s')}
+function doMov(){if(!can('mov'))return msg('Tu rol no puede registrar movimientos.','e');const a=A.find(x=>x.id===document.getElementById('m_a').value),p=+document.getElementById('m_p').value,ar=document.getElementById('m_r').value||'Por asignar',u=document.getElementById('m_u').value.trim();
+ if(!u)return msg('Indica el nuevo custodio.','e');
+ if(a.st==='Baja pendiente')return msg('Bloqueado: el activo tiene una baja pendiente.','e');
+ if(mt(a).c==='er')return msg(`Bloqueado: ${a.name} tiene mantenimiento vencido. Mantenimiento debe registrar el servicio antes de trasladarlo.`,'e');
+ const r={a:a.id,from:`P${a.plant}/${a.area}/${a.cust}`,p,ar,u};
+ if(p!==a.plant){S.pend.push(r);log(a.id,'TRASLADO_SOLICITADO',`${r.from} → P${p}/${ar}/${u} (espera aprobación)`);notify('Administrador',`Aprobar traslado de ${a.id} a Planta ${p}.`);return msg('Traslado entre plantas enviado a aprobación del Administrador.','s')}
+ apply(r);msg('Movimiento aplicado. Ubicación y custodio actualizados.','s')}
+function apply(r){const a=A.find(x=>x.id===r.a);log(a.id,'TRASLADO',`${r.from} → P${r.p}/${r.ar}/${r.u}`);a.plant=r.p;a.area=r.ar;a.cust=r.u;notify('Contador',`Cambio de ubicación/custodio de ${a.id}: P${r.p}/${r.ar}.`);const m=mt(a);if(m.c!=='ok')notify('Mantenimiento',`${a.id} llegó a Planta ${r.p} con mantenimiento ${m.l.toLowerCase()}.`)}
+function approve(i){if(!can('aprobMov'))return msg('Solo el Administrador aprueba traslados.','e');const r=S.pend.splice(i,1)[0];apply(r);msg('Traslado aprobado y aplicado.','s')}
+function doSvc(){if(!can('svc'))return msg('Solo Mantenimiento registra servicios.','e');const a=A.find(x=>x.id===document.getElementById('s_a').value);a.last=iso(TODAY);a.hrs=0;log(a.id,'MANTENIMIENTO','Servicio preventivo completado; contador de uso reiniciado');msg('Servicio registrado. Alerta cerrada.','s')}
+function bajaSol(){if(!can('bajaSol'))return msg('Tu rol no puede solicitar bajas.','e');const a=A.find(x=>x.id===document.getElementById('b_a').value),m=document.getElementById('b_m').value;a.st='Baja pendiente';S.bajas.push({a:a.id,m});log(a.id,'BAJA_SOLICITADA',m);notify('Contador',`Solicitud de baja de ${a.id} (${m}). Requiere autorización.`);msg('Baja solicitada. El Contador debe autorizarla.','s')}
+function bajaAprob(i){if(!can('bajaAprob'))return msg('Solo el Contador autoriza bajas.','e');const b=S.bajas.splice(i,1)[0],a=A.find(x=>x.id===b.a);a.baja=iso(TODAY);const bv=book(a);a.st='Baja';
+ log(a.id,'BAJA_AUTORIZADA',`${b.m} · valor en libros ${mxn(bv)} · depreciación detenida`);
+ S.rep={a,m:b.m,bv,dep:dep(a)};notify('Finanzas / ERP',`REPORTE DE SALIDA ${a.id}: detener depreciación y cancelar póliza. Pérdida por baja ${mxn(bv)}.`);msg('Baja autorizada. Reporte de salida enviado a Finanzas.','s')}
+function verify(){for(let i=0;i<K.length;i++){const e=K[i],prev=i?K[i-1].hash:'GENESIS';if(e.prev!==prev||e.hash!==hash(prev+e.n+e.user+e.asset+e.action+e.detail))return msg(`Cadena rota en el registro ${e.n}.`,'e')}msg(`Kardex íntegro: ${K.length} registros verificados.`,'s')}
+function find(){S.q=document.getElementById('q').value;render()}
+/* ---- Vistas ---- */
+const V={
+panel(){const L=live(),tot=L.reduce((s,a)=>s+a.cost,0),bk=L.reduce((s,a)=>s+book(a),0),al=alerts();
+ return`<h2>Panel</h2><div class="grid"><div class="card kpi">Activos vigentes<b>${L.length}</b></div><div class="card kpi">Costo original<b>${mxn(tot)}</b></div><div class="card kpi">Valor en libros hoy<b>${mxn(bk)}</b></div><div class="card kpi">Alertas de mantenimiento<b class="${al.length?'er':'ok'}">${al.length}</b></div></div>
+ <div class="two"><div class="card"><h3>Alertas activas</h3>${al.length?al.map(x=>`<p>${tag(x.m)} <b>${x.a.name}</b><br><small>Planta ${x.a.plant} · ${x.m.dl<0?'venció hace '+-x.m.dl+' días':'vence en '+x.m.dl+' días'} · ${x.m.hl} h de uso restantes</small></p>`).join(''):'<p>Sin alertas. Todo al día.</p>'}</div>
+ <div class="card"><h3>Pendientes</h3><p>Traslados por aprobar: <b>${S.pend.length}</b></p><p>Bajas por autorizar: <b>${S.bajas.length}</b></p><p>Notificaciones sin leer: <b>${N.length}</b></p></div></div>`},
+alta(){if(!can('alta'))return deny('Alta y etiquetado','Almacenista o Administrador');
+ return`<h2>Alta y etiquetado</h2><div class="two"><div class="card"><label>Nombre del activo</label><input id="f_n" placeholder="Ej. Inyectora #5"><label>Categoría</label><select id="f_k">${opts(['Inyectora','Montacargas','Molde','Cómputo','Motor'])}</select>
+ <label>Planta</label><select id="f_p"><option>1</option><option>2</option><option>3</option></select><label>Área</label><input id="f_a"><label>Custodio</label><input id="f_u"><label>Costo de adquisición (MXN)</label><input id="f_c" type="number" min="1"><label>Valor de rescate (MXN)</label><input id="f_r" type="number" min="0" value="0"><label>Vida útil (años)</label><input id="f_l" type="number" min="1" value="10"><label>Mantenimiento cada (días)</label><input id="f_i" type="number" value="180"><label>Límite de uso entre servicios (horas)</label><input id="f_h" type="number" value="1000"><button class="pri" onclick="doAlta()">Registrar y generar QR</button></div>
+ <div class="card"><h3>Etiqueta</h3>${S.qr?`${qr(S.qr)}<p class="mono">${S.qr}</p><p><small>El QR abre el expediente del activo. Usar etiqueta de poliéster resistente a grasa.</small></p>`:'<p>Registra un activo para ver su etiqueta.</p>'}</div></div>`},
+mov(){const rows=S.pend.map((r,i)=>`<tr><td>${r.a}</td><td>${r.from}</td><td>P${r.p}/${r.ar}/${r.u}</td><td>${can('aprobMov')?`<button class="sec" onclick="approve(${i})">Aprobar</button>`:'Espera al Administrador'}</td></tr>`).join('');
+ return`<h2>Movimientos</h2>${can('mov')?`<div class="card"><label>Activo</label><select id="m_a">${opts(live(),x=>x.id)}</select><label>Planta destino</label><select id="m_p"><option>1</option><option>2</option><option>3</option></select><label>Área destino</label><input id="m_r"><label>Nuevo custodio</label><input id="m_u"><button class="pri" onclick="doMov()">Registrar movimiento</button><p><small>Reglas: mantenimiento vencido bloquea el traslado. Entre plantas requiere aprobación. Todo notifica a Contabilidad.</small></p></div>`:'<div class="card">Tu rol puede consultar pero no registrar movimientos.</div>'}
+ <div class="card"><h3>Traslados por aprobar</h3>${rows?`<div class="tw"><table><tr><th>Activo</th><th>Origen</th><th>Destino</th><th></th></tr>${rows}</table></div>`:'<p>Ninguno.</p>'}</div>`},
+mant(){return`<h2>Mantenimiento</h2>${can('svc')?`<div class="card"><label>Activo atendido</label><select id="s_a">${opts(live(),x=>x.id)}</select><button class="pri" onclick="doSvc()">Registrar servicio preventivo</button></div>`:''}
+ <div class="card tw"><table><tr><th>Activo</th><th>Último servicio</th><th>Próximo</th><th>Uso restante</th><th>Estado</th></tr>${live().map(a=>{const m=mt(a);return`<tr><td>${a.name}<br><small>${a.id}</small></td><td>${a.last}</td><td>${iso(addD(a.last,a.int))}</td><td>${m.hl} h</td><td>${tag(m)}</td></tr>`}).join('')}</table></div>
+ <div class="card"><b>Regla:</b> Vencido si hoy &gt; último servicio + intervalo, o si las horas de uso alcanzan el límite. Próximo si faltan 15 días o menos, o queda 10 % del límite de horas.</div>`},
+bajas(){const rep=S.rep;
+ return`<h2>Bajas y depreciación</h2>${can('bajaSol')?`<div class="card"><label>Activo</label><select id="b_a">${opts(live().filter(a=>a.st!=='Baja pendiente'),x=>x.id)}</select><label>Motivo</label><select id="b_m">${opts(['Desmantelado para refacciones','Chatarra','Destrucción','Venta'])}</select><button class="pri" onclick="bajaSol()">Solicitar baja</button></div>`:''}
+ <div class="card"><h3>Pendientes de autorización</h3>${S.bajas.length?S.bajas.map((b,i)=>`<p>${b.a} · ${b.m} ${can('bajaAprob')?`<button class="sec" onclick="bajaAprob(${i})">Autorizar baja</button>`:'<small>(espera al Contador)</small>'}</p>`).join(''):'<p>Ninguna.</p>'}</div>
+ ${rep?`<div class="card" style="border-color:var(--er)"><h3>Reporte de salida a Finanzas</h3><p><b>${rep.a.id}</b> · ${rep.a.name}<br>Motivo: ${rep.m}<br>Depreciación acumulada: ${mxn(rep.dep)}<br>Valor en libros dado de baja: ${mxn(rep.bv)}<br>Acciones: detener depreciación, cancelar póliza, ajustar impuestos.</p></div>`:''}
+ <div class="card tw"><h3>Valor contable (línea recta)</h3><table><tr><th>Activo</th><th>Costo</th><th>Dep. acumulada</th><th>Valor en libros</th><th>Estado</th></tr>${A.map(a=>`<tr><td>${a.name}</td><td>${mxn(a.cost)}</td><td>${mxn(dep(a))}</td><td>${mxn(book(a))}</td><td>${a.st}</td></tr>`).join('')}</table><p><small>Depreciación mensual = (costo − rescate) ÷ (vida útil × 12). Se detiene en la fecha de baja y nunca excede costo − rescate.</small></p></div>`},
+buscar(){const q=(S.q||'').toLowerCase(),r=q?A.filter(a=>(a.name+a.cat+a.id).toLowerCase().includes(q)):[];
+ return`<h2>Buscar activo</h2><div class="card"><label>Nombre, categoría o código</label><input id="q" value="${S.q||''}" placeholder="Ej. molde"><button class="pri" onclick="find()">Buscar</button></div>${q?`<div class="card tw">${r.length?`<table><tr><th>Activo</th><th>Ubicación</th><th>Custodio</th><th>Estado</th></tr>${r.map(a=>`<tr><td>${a.name}<br><small>${a.id}</small></td><td>Planta ${a.plant} · ${a.area}</td><td>${a.cust}</td><td>${a.st}</td></tr>`).join('')}</table><p><b>Antes de comprar:</b> hay ${r.filter(a=>a.st==='Operativo').length} disponible(s).</p>`:'<p>Sin resultados. Puedes proceder con la compra.</p>'}</div>`:''}`},
+alertas(){return`<h2>Alertas y notificaciones</h2><div class="card"><h3>Mantenimiento</h3>${alerts().map(x=>`<p>${tag(x.m)} ${x.a.name}, Planta ${x.a.plant}</p>`).join('')||'<p>Sin alertas.</p>'}</div><div class="card"><h3>Bandeja del sistema</h3>${N.length?N.map(n=>`<p><b>Para ${n.to}</b> · ${n.ts}<br>${n.t}</p>`).join(''):'<p>Sin notificaciones.</p>'}</div>`},
+kardex(){return`<h2>Kardex inmutable</h2><div class="card"><p>Cada registro incluye la huella del anterior. Nadie puede editar o borrar: una corrección se registra como un movimiento nuevo.</p><button class="pri" onclick="verify()">Verificar integridad</button></div><div class="card tw"><table><tr><th>#</th><th>Fecha</th><th>Usuario</th><th>Activo</th><th>Acción</th><th>Huella</th></tr>${[...K].reverse().map(e=>`<tr><td>${e.n}</td><td>${e.ts}</td><td>${e.user}</td><td>${e.asset}</td><td>${e.action}<br><small>${e.detail}</small></td><td class="mono">${e.hash}</td></tr>`).join('')}</table></div>`},
+sistema(){const P=[['Alta / QR','Alta, ID único, etiqueta','Almacenista, Admin'],['Movimientos','Traslados, custodio, aprobación','Almacenista (Admin aprueba)'],['Mantenimiento','Alertas por fecha y uso','Mantenimiento'],['Bajas / Depreciación','Valor en libros, reporte de salida','Mantenimiento solicita, Contador autoriza']];
+ return`<h2>Arquitectura</h2><div class="card"><div class="flow"><div><b>Piso de planta</b><br>Móvil/tablet con lector QR. Operarios: Almacenista, Mantenimiento.</div><span>→</span><div><b>NEO-PLASTIC</b><br>4 módulos + Kardex inmutable + reglas de alertas + control de roles.</div><span>→</span><div><b>ERP contable</b><br>Altas, ajustes de depreciación, bajas, pólizas.</div></div></div>
+ <div class="card tw"><h3>Ficha técnica</h3><table><tr><th>Módulo</th><th>Función</th><th>Roles</th></tr>${P.map(r=>`<tr><td>${r.join('</td><td>')}</td></tr>`).join('')}</table></div>
+ <div class="card tw"><h3>Interfaces con el ERP (por validar)</h3><table><tr><th>Evento</th><th>Dirección</th><th>Contenido</th></tr><tr><td>Alta</td><td>SGA → ERP</td><td>ID, costo, vida útil, rescate</td></tr><tr><td>Traslado</td><td>SGA → ERP</td><td>Planta/centro de costo y custodio</td></tr><tr><td>Baja</td><td>SGA → ERP</td><td>Reporte de salida, valor en libros, motivo</td></tr><tr><td>Catálogo contable</td><td>ERP → SGA</td><td>Centros de costo y cuentas</td></tr></table><p><small>Prototipo: intercambio por API REST o archivo CSV programado, según lo que permita el ERP actual.</small></p></div>
+ <div class="card tw"><h3>Permisos por rol</h3><table><tr><th>Acción</th>${Object.keys(ROLES).map(r=>`<th>${r}</th>`).join('')}</tr>${[['Alta','alta'],['Registrar movimiento','mov'],['Aprobar traslado','aprobMov'],['Registrar servicio','svc'],['Solicitar baja','bajaSol'],['Autorizar baja','bajaAprob']].map(([l,k])=>`<tr><td>${l}</td>${Object.keys(ROLES).map(r=>`<td>${PERM[k].includes(r)?'Sí':'—'}</td>`).join('')}</tr>`).join('')}<tr><td>Ver Kardex</td><td>Sí</td><td>Sí</td><td>Sí</td><td>Sí</td></tr><tr><td>Editar o borrar Kardex</td><td>—</td><td>—</td><td>—</td><td>—</td></tr></table></div>`}};
+const deny=(t,r)=>`<h2>${t}</h2><div class="card">Esta pantalla es para: ${r}. Tu rol actual es ${S.user}.</div>`;
+const NAV=[['panel','Panel'],['alta','Alta'],['mov','Movimientos'],['mant','Mantenimiento'],['bajas','Bajas'],['buscar','Buscar'],['alertas','Alertas'],['kardex','Kardex'],['sistema','Arquitectura']];
+function render(){const el=document.getElementById('app');
+ if(!S.user){el.innerHTML=`<main style="max-width:640px"><h1 style="font-size:2.6rem;margin-top:2rem">NEO-PLASTIC</h1><p>Sistema de gestión de activos de Plásticos del Bajío S.A.<br>Elige tu rol para entrar al prototipo.</p><div class="roles">${Object.entries(ROLES).map(([r,d])=>`<button onclick="login('${r}')"><b>${r}</b><br><small>${d}</small></button>`).join('')}</div></main>`;return}
+ el.innerHTML=`<header><span class="brand">NEO-PLASTIC</span><small>${S.user} · 03/11/2026</small><span class="sp"></span><button class="sec" style="color:#fff;border-color:#fff" onclick="logout()">Salir</button></header><nav>${NAV.map(([k,l])=>`<button class="${S.view===k?'on':''}" onclick="go('${k}')">${l}${k==='alertas'&&alerts().length?' ('+alerts().length+')':''}</button>`).join('')}</nav><main>${S.msg?`<div class="msg ${S.msg.k}" role="status">${S.msg.t}</div>`:''}${V[S.view]()}</main>`}
+render();
+</script></body></html>
