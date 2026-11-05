@@ -38,7 +38,7 @@ th,td{text-align:left;padding:.5rem;border-bottom:1px solid var(--ln);vertical-a
 @media(max-width:700px){.flow{grid-template-columns:1fr}.flow>span{transform:rotate(90deg);justify-self:center}}
 .mono{font-family:ui-monospace,Menlo,monospace;font-size:.75rem;word-break:break-all}
 .two{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-</style></head><body>
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script></head><body>
 <div id="app"></div>
 <script>
 const TODAY=new Date('2026-11-03'),D=s=>new Date(s),addD=(s,n)=>{const x=D(s);x.setDate(x.getDate()+n);return x};
@@ -57,26 +57,36 @@ let K=[],N=[],S={user:null,view:'panel',msg:null,pend:[],bajas:[]};
 const hash=s=>{let h=5381n;for(const c of s)h=((h*33n)^BigInt(c.charCodeAt(0)))&0xffffffffffffn;return h.toString(16).padStart(12,'0')};
 function log(asset,action,detail){const prev=K.length?K[K.length-1].hash:'GENESIS',e={n:K.length+1,ts:new Date().toLocaleString('es-MX'),user:S.user||'Sistema',asset,action,detail,prev};e.hash=hash(prev+e.n+e.user+asset+action+detail);K.push(Object.freeze(e))}
 const notify=(to,t)=>N.unshift({to,t,ts:new Date().toLocaleTimeString('es-MX')});
-const dep=a=>{const e=a.baja?D(a.baja):TODAY,m=Math.max(0,(e.getFullYear()-D(a.acq).getFullYear())*12+e.getMonth()-D(a.acq).getMonth()),b=a.cost-a.res;return Math.min(m*b/(a.life*12),b)};
+const dep=a=>{const e=a.baja?D(a.baja):TODAY,s=D(a.acq),m=Math.max(0,(e.getFullYear()-s.getFullYear())*12+e.getMonth()-s.getMonth()-(e.getDate()<s.getDate()?1:0)),b=Math.max(0,a.cost-a.res);return Math.min(m*b/(a.life*12),b)};
 const book=a=>a.cost-dep(a);
 function mt(a){if(a.st==='Baja')return{l:'—',c:''};const dl=days(TODAY,addD(a.last,a.int)),hl=a.lim-a.hrs;
  if(dl<0||hl<=0)return{l:'Vencido',c:'er',dl,hl};if(dl<=15||hl<=a.lim*.1)return{l:'Próximo',c:'wa',dl,hl};return{l:'Al día',c:'ok',dl,hl}}
 const alerts=()=>A.filter(a=>mt(a).c==='er'||mt(a).c==='wa').map(a=>({a,m:mt(a)}));
-function qr(t){const h=hash(t)+hash(t+'x')+hash(t+'y')+hash(t+'z'),n=21;let s='',i=0;const f=(x,y)=>(x<8&&y<8)||(x>12&&y<8)||(x<8&&y>12);
+function qr(t){try{const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true}).replace('<svg','<svg width="130" role="img" aria-label="QR de '+t+'"')}catch(e){return qrOld(t)}}
+function qrOld(t){const h=hash(t)+hash(t+'x')+hash(t+'y')+hash(t+'z'),n=21;let s='',i=0;const f=(x,y)=>(x<8&&y<8)||(x>12&&y<8)||(x<8&&y>12);
  for(let y=0;y<n;y++)for(let x=0;x<n;x++){let on;if(f(x,y)){const lx=x%14<8?x%14:x-13,ly=y<8?y:y-13;on=lx==0||lx==6||ly==0||ly==6||(lx>=2&&lx<=4&&ly>=2&&ly<=4)}else on=parseInt(h[i++%h.length],16)%2==1;if(on)s+=`<rect x="${x}" y="${y}" width="1" height="1"/>`}
  return`<svg viewBox="-1 -1 23 23" width="130" role="img" aria-label="Código QR de ${t}"><rect x="-1" y="-1" width="23" height="23" fill="#fff"/><g fill="#43291f">${s}</g></svg>`}
 const tag=m=>`<span class="tag ${m.c}">${m.l}</span>`;
 const opts=(l,v=x=>x)=>l.map(x=>`<option value="${v(x)}">${typeof x==='object'?x.id+' · '+x.name:x}</option>`).join('');
 const live=()=>A.filter(a=>a.st!=='Baja');
 function seed(){log('SISTEMA','CARGA_INICIAL','Inventario migrado desde Excel: '+A.length+' activos');log('PLB-P1-MON-0007','ALERTA','Mantenimiento vencido detectado en migración')}
-seed();
+const KEY='neoplastic_v1';
+function save(){try{localStorage.setItem(KEY,JSON.stringify({A,K,N,pend:S.pend,bajas:S.bajas,rep:S.rep}))}catch(e){}}
+function load(){try{const r=localStorage.getItem(KEY);if(!r)return false;const o=JSON.parse(r);A=o.A;K=o.K.map(e=>Object.freeze(e));N=o.N;S.pend=o.pend||[];S.bajas=o.bajas||[];S.rep=o.rep;return true}catch(e){return false}}
+function reset(){try{localStorage.removeItem(KEY)}catch(e){}location.reload()}
+function bars(rows){const mx=Math.max(1,...rows.map(r=>r[1]));return rows.map(([l,n,c])=>`<div style="display:grid;grid-template-columns:minmax(110px,200px) 1fr 28px;gap:.5rem;align-items:center;margin:.4rem 0"><span>${l}</span><div style="background:var(--bg);border-radius:4px;height:22px"><div style="width:${n/mx*100}%;height:100%;border-radius:4px;background:var(${c})"></div></div><b>${n}</b></div>`).join('')}
+function chart(){const ok=A.filter(a=>a.st==='Operativo'&&mt(a).c==='ok').length,att=A.filter(a=>a.st==='Operativo'&&mt(a).c!=='ok').length,pe=A.filter(a=>a.st==='Baja pendiente').length,out=A.filter(a=>a.st==='Baja').length,pl=[1,2,3].map(p=>['Planta '+p,live().filter(a=>a.plant===p).length,'--br']);
+ return`<div class="two"><div class="card"><h3>Estado de los activos</h3>${bars([['Disponibles',ok,'--ok'],['Requieren mantenimiento',att,'--wa'],['Baja pendiente',pe,'--er'],['Dados de baja (ya no existen)',out,'--mut']])}</div><div class="card"><h3>Activos vigentes por planta</h3>${bars(pl)}</div></div>`}
+if(!load())seed();
 const msg=(t,k)=>{S.msg={t,k};render()};
 function go(v){S.view=v;S.msg=null;render()}
-function login(r){S.user=r;S.view='panel';log('SISTEMA','LOGIN','Acceso de '+r);render()}
-function logout(){S.user=null;render()}
+function login(r){S.msg=null;S.user=r;S.view='panel';log('SISTEMA','LOGIN','Acceso de '+r);render()}
+function logout(){S.user=null;S.msg=null;render()}
+const PW={Almacenista:'alm2026',Mantenimiento:'mtto2026',Contador:'cont2026',Administrador:'admin2026'};
+function tryLogin(){const r=document.getElementById('lr').value,p=document.getElementById('lp').value;if(PW[r]===p)return login(r);log('SISTEMA','LOGIN_FALLIDO','Intento fallido con el rol '+r);msg('Contraseña incorrecta. El intento quedó en el Kardex.','e')}
 /* ---- Acciones ---- */
 function doAlta(){if(!can('alta'))return msg('Tu rol no puede dar de alta activos.','e');const g=i=>document.getElementById(i).value.trim();
- const name=g('f_n'),cost=+g('f_c');if(!name||!(cost>0))return msg('Completa nombre y costo mayor a 0.','e');
+ const name=g('f_n'),cost=+g('f_c');if(!name||!(cost>0))return msg('Completa nombre y costo mayor a 0.','e');if((+g('f_r')||0)>=cost)return msg('El valor de rescate debe ser menor al costo.','e');
  const code={Inyectora:'INY',Montacargas:'MON',Molde:'MOL',Cómputo:'LAP',Motor:'MOT'}[g('f_k')],seq=String(A.length+1).padStart(4,'0'),id=`PLB-P${g('f_p')}-${code}-${seq}`;
  A.push({id,name,cat:g('f_k'),plant:+g('f_p'),area:g('f_a')||'Por asignar',cust:g('f_u')||'Por asignar',st:'Operativo',cost,res:+g('f_r')||0,life:+g('f_l')||5,acq:iso(TODAY),last:iso(TODAY),int:+g('f_i')||180,hrs:0,lim:+g('f_h')||1000});
  log(id,'ALTA',`${name} · ${mxn(cost)} · Planta ${g('f_p')}`);notify('Contador',`Alta ${id}: ${mxn(cost)}. Iniciar depreciación.`);S.qr=id;msg('Activo registrado. Imprime la etiqueta QR y pégala en el equipo.','s')}
@@ -100,7 +110,7 @@ function find(){S.q=document.getElementById('q').value;render()}
 const V={
 panel(){const L=live(),tot=L.reduce((s,a)=>s+a.cost,0),bk=L.reduce((s,a)=>s+book(a),0),al=alerts();
  return`<h2>Panel</h2><div class="grid"><div class="card kpi">Activos vigentes<b>${L.length}</b></div><div class="card kpi">Costo original<b>${mxn(tot)}</b></div><div class="card kpi">Valor en libros hoy<b>${mxn(bk)}</b></div><div class="card kpi">Alertas de mantenimiento<b class="${al.length?'er':'ok'}">${al.length}</b></div></div>
- <div class="two"><div class="card"><h3>Alertas activas</h3>${al.length?al.map(x=>`<p>${tag(x.m)} <b>${x.a.name}</b><br><small>Planta ${x.a.plant} · ${x.m.dl<0?'venció hace '+-x.m.dl+' días':'vence en '+x.m.dl+' días'} · ${x.m.hl} h de uso restantes</small></p>`).join(''):'<p>Sin alertas. Todo al día.</p>'}</div>
+ ${chart()}<div class="two"><div class="card"><h3>Alertas activas</h3>${al.length?al.map(x=>`<p>${tag(x.m)} <b>${x.a.name}</b><br><small>Planta ${x.a.plant} · ${x.m.dl<0?'venció hace '+-x.m.dl+' días':'vence en '+x.m.dl+' días'} · ${x.m.hl} h de uso restantes</small></p>`).join(''):'<p>Sin alertas. Todo al día.</p>'}</div>
  <div class="card"><h3>Pendientes</h3><p>Traslados por aprobar: <b>${S.pend.length}</b></p><p>Bajas por autorizar: <b>${S.bajas.length}</b></p><p>Notificaciones sin leer: <b>${N.length}</b></p></div></div>`},
 alta(){if(!can('alta'))return deny('Alta y etiquetado','Almacenista o Administrador');
  return`<h2>Alta y etiquetado</h2><div class="two"><div class="card"><label>Nombre del activo</label><input id="f_n" placeholder="Ej. Inyectora #5"><label>Categoría</label><select id="f_k">${opts(['Inyectora','Montacargas','Molde','Cómputo','Motor'])}</select>
@@ -122,14 +132,14 @@ buscar(){const q=(S.q||'').toLowerCase(),r=q?A.filter(a=>(a.name+a.cat+a.id).toL
 alertas(){return`<h2>Alertas y notificaciones</h2><div class="card"><h3>Mantenimiento</h3>${alerts().map(x=>`<p>${tag(x.m)} ${x.a.name}, Planta ${x.a.plant}</p>`).join('')||'<p>Sin alertas.</p>'}</div><div class="card"><h3>Bandeja del sistema</h3>${N.length?N.map(n=>`<p><b>Para ${n.to}</b> · ${n.ts}<br>${n.t}</p>`).join(''):'<p>Sin notificaciones.</p>'}</div>`},
 kardex(){return`<h2>Kardex inmutable</h2><div class="card"><p>Cada registro incluye la huella del anterior. Nadie puede editar o borrar: una corrección se registra como un movimiento nuevo.</p><button class="pri" onclick="verify()">Verificar integridad</button></div><div class="card tw"><table><tr><th>#</th><th>Fecha</th><th>Usuario</th><th>Activo</th><th>Acción</th><th>Huella</th></tr>${[...K].reverse().map(e=>`<tr><td>${e.n}</td><td>${e.ts}</td><td>${e.user}</td><td>${e.asset}</td><td>${e.action}<br><small>${e.detail}</small></td><td class="mono">${e.hash}</td></tr>`).join('')}</table></div>`},
 sistema(){const P=[['Alta / QR','Alta, ID único, etiqueta','Almacenista, Admin'],['Movimientos','Traslados, custodio, aprobación','Almacenista (Admin aprueba)'],['Mantenimiento','Alertas por fecha y uso','Mantenimiento'],['Bajas / Depreciación','Valor en libros, reporte de salida','Mantenimiento solicita, Contador autoriza']];
- return`<h2>Arquitectura</h2><div class="card"><div class="flow"><div><b>Piso de planta</b><br>Móvil/tablet con lector QR. Operarios: Almacenista, Mantenimiento.</div><span>→</span><div><b>NEO-PLASTIC</b><br>4 módulos + Kardex inmutable + reglas de alertas + control de roles.</div><span>→</span><div><b>ERP contable</b><br>Altas, ajustes de depreciación, bajas, pólizas.</div></div></div>
+ return`<h2>Cómo funciona el sistema</h2><button class="sec" onclick="reset()">Reiniciar datos de demostración</button><div class="card"><div class="flow"><div><b>Piso de planta</b><br>Móvil/tablet con lector QR. Operarios: Almacenista, Mantenimiento.</div><span>→</span><div><b>NEO-PLASTIC</b><br>4 módulos + Kardex inmutable + reglas de alertas + control de roles.</div><span>→</span><div><b>ERP contable</b><br>Altas, ajustes de depreciación, bajas, pólizas.</div></div></div>
  <div class="card tw"><h3>Ficha técnica</h3><table><tr><th>Módulo</th><th>Función</th><th>Roles</th></tr>${P.map(r=>`<tr><td>${r.join('</td><td>')}</td></tr>`).join('')}</table></div>
  <div class="card tw"><h3>Interfaces con el ERP (por validar)</h3><table><tr><th>Evento</th><th>Dirección</th><th>Contenido</th></tr><tr><td>Alta</td><td>SGA → ERP</td><td>ID, costo, vida útil, rescate</td></tr><tr><td>Traslado</td><td>SGA → ERP</td><td>Planta/centro de costo y custodio</td></tr><tr><td>Baja</td><td>SGA → ERP</td><td>Reporte de salida, valor en libros, motivo</td></tr><tr><td>Catálogo contable</td><td>ERP → SGA</td><td>Centros de costo y cuentas</td></tr></table><p><small>Prototipo: intercambio por API REST o archivo CSV programado, según lo que permita el ERP actual.</small></p></div>
  <div class="card tw"><h3>Permisos por rol</h3><table><tr><th>Acción</th>${Object.keys(ROLES).map(r=>`<th>${r}</th>`).join('')}</tr>${[['Alta','alta'],['Registrar movimiento','mov'],['Aprobar traslado','aprobMov'],['Registrar servicio','svc'],['Solicitar baja','bajaSol'],['Autorizar baja','bajaAprob']].map(([l,k])=>`<tr><td>${l}</td>${Object.keys(ROLES).map(r=>`<td>${PERM[k].includes(r)?'Sí':'—'}</td>`).join('')}</tr>`).join('')}<tr><td>Ver Kardex</td><td>Sí</td><td>Sí</td><td>Sí</td><td>Sí</td></tr><tr><td>Editar o borrar Kardex</td><td>—</td><td>—</td><td>—</td><td>—</td></tr></table></div>`}};
 const deny=(t,r)=>`<h2>${t}</h2><div class="card">Esta pantalla es para: ${r}. Tu rol actual es ${S.user}.</div>`;
-const NAV=[['panel','Panel'],['alta','Alta'],['mov','Movimientos'],['mant','Mantenimiento'],['bajas','Bajas'],['buscar','Buscar'],['alertas','Alertas'],['kardex','Kardex'],['sistema','Arquitectura']];
-function render(){const el=document.getElementById('app');
- if(!S.user){el.innerHTML=`<main style="max-width:640px"><h1 style="font-size:2.6rem;margin-top:2rem">NEO-PLASTIC</h1><p>Sistema de gestión de activos de Plásticos del Bajío S.A.<br>Elige tu rol para entrar al prototipo.</p><div class="roles">${Object.entries(ROLES).map(([r,d])=>`<button onclick="login('${r}')"><b>${r}</b><br><small>${d}</small></button>`).join('')}</div></main>`;return}
+const NAV=[['panel','Panel'],['alta','Alta'],['mov','Movimientos'],['mant','Mantenimiento'],['bajas','Bajas'],['buscar','Buscar'],['alertas','Alertas'],['kardex','Kardex'],['sistema','Sistema']];
+function render(){save();const el=document.getElementById('app');
+ if(!S.user){el.innerHTML=`<main style="max-width:640px"><h1 style="font-size:2.6rem;margin-top:2rem">NEO-PLASTIC</h1><p>Sistema de gestión de activos de Plásticos del Bajío S.A.<br>Elige tu rol para entrar al prototipo.</p><div class="card">${S.msg?`<div class="msg e" role="alert">${S.msg.t}</div>`:''}<label for="lr">Rol</label><select id="lr">${opts(Object.keys(ROLES))}</select><label for="lp">Contraseña</label><input id="lp" type="password" autocomplete="off"><button class="pri" onclick="tryLogin()">Entrar</button></div></main>`;return}
  el.innerHTML=`<header><span class="brand">NEO-PLASTIC</span><small>${S.user} · 03/11/2026</small><span class="sp"></span><button class="sec" style="color:#fff;border-color:#fff" onclick="logout()">Salir</button></header><nav>${NAV.map(([k,l])=>`<button class="${S.view===k?'on':''}" onclick="go('${k}')">${l}${k==='alertas'&&alerts().length?' ('+alerts().length+')':''}</button>`).join('')}</nav><main>${S.msg?`<div class="msg ${S.msg.k}" role="status">${S.msg.t}</div>`:''}${V[S.view]()}</main>`}
 render();
 </script></body></html>
