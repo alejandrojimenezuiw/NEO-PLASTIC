@@ -38,7 +38,7 @@ th,td{text-align:left;padding:.5rem;border-bottom:1px solid var(--ln);vertical-a
 @media(max-width:700px){.flow{grid-template-columns:1fr}.flow>span{transform:rotate(90deg);justify-self:center}}
 .mono{font-family:ui-monospace,Menlo,monospace;font-size:.75rem;word-break:break-all}
 .two{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
-</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script></head><body>
+</style><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script></head><body>
 <div id="app"></div>
 <script>
 const TODAY=new Date('2026-11-03'),D=s=>new Date(s),addD=(s,n)=>{const x=D(s);x.setDate(x.getDate()+n);return x};
@@ -71,7 +71,17 @@ const opts=(l,v=x=>x)=>l.map(x=>`<option value="${v(x)}">${typeof x==='object'?x
 const live=()=>A.filter(a=>a.st!=='Baja');
 function seed(){log('SISTEMA','CARGA_INICIAL','Inventario migrado desde Excel: '+A.length+' activos');log('PLB-P1-MON-0007','ALERTA','Mantenimiento vencido detectado en migración')}
 const KEY='neoplastic_v1';
-function save(){try{localStorage.setItem(KEY,JSON.stringify({A,K,N,pend:S.pend,bajas:S.bajas,rep:S.rep}))}catch(e){}}
+/* === CONFIGURACIÓN SUPABASE: pega aquí tu Project URL y tu anon/publishable key === */
+const SB_URL='',SB_KEY='';
+let sb=null,ready=false,lastJ='',timer=null;
+try{if(SB_URL&&SB_KEY&&window.supabase)sb=supabase.createClient(SB_URL,SB_KEY)}catch(e){}
+const cj=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce((r,x)=>(r[x]=v[x],r),{}):v);
+const snap=()=>({A,K,N,pend:S.pend,bajas:S.bajas,rep:S.rep});
+function applyState(o){A=o.A;K=o.K.map(e=>Object.freeze(e));N=o.N||[];S.pend=o.pend||[];S.bajas=o.bajas||[];S.rep=o.rep}
+function save(){const s=snap();try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}const j=cj(s);if(sb&&ready&&j!==lastJ){lastJ=j;clearTimeout(timer);timer=setTimeout(()=>sb.from('neo_state').upsert({id:1,data:s}).then(r=>{if(r.error)console.error(r.error)}),300)}}
+async function initRemote(){if(!sb)return;try{const{data,error}=await sb.from('neo_state').select('data').eq('id',1).maybeSingle();if(error)throw error;ready=true;
+ if(data&&data.data&&data.data.A){lastJ=cj(data.data);applyState(data.data);render()}else{lastJ='';save()}
+ sb.channel('neo').on('postgres_changes',{event:'*',schema:'public',table:'neo_state'},p=>{const d=p.new&&p.new.data;if(!d||!d.A)return;const j=cj(d);if(j===lastJ)return;lastJ=j;applyState(d);const t=document.activeElement&&document.activeElement.tagName;if(t==='INPUT'||t==='SELECT')return;render()}).subscribe()}catch(e){console.error('Supabase:',e)}}
 function load(){try{const r=localStorage.getItem(KEY);if(!r)return false;const o=JSON.parse(r);A=o.A;K=o.K.map(e=>Object.freeze(e));N=o.N;S.pend=o.pend||[];S.bajas=o.bajas||[];S.rep=o.rep;return true}catch(e){return false}}
 function reset(){try{localStorage.removeItem(KEY)}catch(e){}location.reload()}
 function bars(rows){const mx=Math.max(1,...rows.map(r=>r[1]));return rows.map(([l,n,c])=>`<div style="display:grid;grid-template-columns:minmax(110px,200px) 1fr 28px;gap:.5rem;align-items:center;margin:.4rem 0"><span>${l}</span><div style="background:var(--bg);border-radius:4px;height:22px"><div style="width:${n/mx*100}%;height:100%;border-radius:4px;background:var(${c})"></div></div><b>${n}</b></div>`).join('')}
@@ -142,4 +152,5 @@ function render(){save();const el=document.getElementById('app');
  if(!S.user){el.innerHTML=`<main style="max-width:640px"><h1 style="font-size:2.6rem;margin-top:2rem">NEO-PLASTIC</h1><p>Sistema de gestión de activos de Plásticos del Bajío S.A.<br>Elige tu rol para entrar al prototipo.</p><div class="card">${S.msg?`<div class="msg e" role="alert">${S.msg.t}</div>`:''}<label for="lr">Rol</label><select id="lr">${opts(Object.keys(ROLES))}</select><label for="lp">Contraseña</label><input id="lp" type="password" autocomplete="off"><button class="pri" onclick="tryLogin()">Entrar</button></div></main>`;return}
  el.innerHTML=`<header><span class="brand">NEO-PLASTIC</span><small>${S.user} · 03/11/2026</small><span class="sp"></span><button class="sec" style="color:#fff;border-color:#fff" onclick="logout()">Salir</button></header><nav>${NAV.map(([k,l])=>`<button class="${S.view===k?'on':''}" onclick="go('${k}')">${l}${k==='alertas'&&alerts().length?' ('+alerts().length+')':''}</button>`).join('')}</nav><main>${S.msg?`<div class="msg ${S.msg.k}" role="status">${S.msg.t}</div>`:''}${V[S.view]()}</main>`}
 render();
+initRemote();
 </script></body></html>
