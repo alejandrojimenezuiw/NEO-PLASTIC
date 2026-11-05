@@ -72,7 +72,7 @@ const live=()=>A.filter(a=>a.st!=='Baja');
 function seed(){log('SISTEMA','CARGA_INICIAL','Inventario migrado desde Excel: '+A.length+' activos');log('PLB-P1-MON-0007','ALERTA','Mantenimiento vencido detectado en migración')}
 const KEY='neoplastic_v1';
 /* === CONFIGURACIÓN SUPABASE: pega aquí tu Project URL y tu anon/publishable key === */
-const SB_URL='',SB_KEY='';
+const SB_URL='https://zbqwbgaboonkzgygdluo.supabase.co/rest/v1/',SB_KEY='sb_publishable_dG9H7BVXOIKDP_OQquCF4g_ZAEqm4Vk';
 let sb=null,ready=false,lastJ='',timer=null;
 try{if(SB_URL&&SB_KEY&&window.supabase)sb=supabase.createClient(SB_URL,SB_KEY)}catch(e){}
 const cj=o=>JSON.stringify(o,(k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce((r,x)=>(r[x]=v[x],r),{}):v);
